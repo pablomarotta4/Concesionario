@@ -19,11 +19,13 @@ class User(BaseModel):
         name: str
         email: str
         password: str
+        is_admin: bool
     
 Users = [
-    User(id=1, name="Alice", email="alice@example.com", password="password123"),
-    User(id=2, name="Bob", email="bob@example.com", password="password456"),
-    User(id=3, name="Charlie", email="charlie@example.com", password="password789"),
+    User(id=1, name="admin", email="admin@example.com", password="admin", is_admin=True),
+    User(id=2, name="Bob", email="bob@example.com", password="password456", is_admin=False),
+    User(id=3, name="Charlie", email="charlie@example.com", password="password789", is_admin=False),
+    User(id=4, name="Alice", email="alice@example.com", password="password123", is_admin=False)
 ]
 
 @app.get("/users/{user_id}")
@@ -41,3 +43,14 @@ def find_user_by_id(user_id: int):
 @app.get("/userclass")
 async def userclass():
     return Users 
+
+@app.post("/users")
+async def create_user(user: User):
+    if any(u.email == user.email for u in Users):
+        return {"error": "Email already registered"}
+    elif any(u.id == user.id for u in Users):
+        user.id = max(u.id for u in Users) + 1
+        Users.append(user)
+    else:
+        Users.append(user)
+    return user
