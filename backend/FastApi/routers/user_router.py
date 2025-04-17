@@ -1,41 +1,38 @@
 from fastapi import APIRouter, HTTPException
-from models.users import User  
+from pydantic import EmailStr
+from models.users import User, UserDb
+from services.user_service import get_all_users, find_user_by_id, find_user_by_email, add_user, find_user_by_username
 
 router = APIRouter(prefix="/users", tags=["Users"])
 
-Users = [
-    User(id=1, name="admin", email="admin@example.com", password="admin", is_admin=True),
-    User(id=2, name="Bob", email="bob@example.com", password="password456", is_admin=False),
-    User(id=3, name="Charlie", email="charlie@example.com", password="password789", is_admin=False),
-    User(id=4, name="Alice", email="alice@example.com", password="password123", is_admin=False),
-]
-
-# Función auxiliar para buscar por ID
-def find_user_by_id(user_id: int):
-    for user in Users:
-        if user.id == user_id:
-            return user
-    return None
-
-# Listar todos los usuarios
-@router.get("/")
+@router.get("/users", response_model=list[User])
 async def list_users():
-    return [user.dict() for user in Users]
+    return get_all_users()
 
-# Obtener usuario por ID
-@router.get("/{user_id}")
+@router.get("/{user_id}", response_model=User)
 async def get_user(user_id: int):
     user = find_user_by_id(user_id)
-    if user:
-        return user.dict()
-    raise HTTPException(status_code=404, detail="User not found")
-
-# Crear usuario nuevo
-@router.post("/")
-async def create_user(user: User):
-    if any(u.email == user.email for u in Users):
-        raise HTTPException(status_code=400, detail="Email already registered")
-
-    user.id = max(u.id for u in Users) + 1
-    Users.append(user)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
     return user
+
+@router.post("/register", response_model=User)
+async def create_user(user: UserDb):
+    # Validate that all required fields are present
+    required_fields = ["username", "email", "password"]
+    for field in required_fields:
+        if field not in user.model_dump() or (field == "password" and not user.password):
+            raise HTTPException(status_code=400, detail=f"Missing required field: {field}")
+    
+    # Check if email is already registered
+    if find_user_by_email(user.email):
+        raise HTTPException(status_code=400, detail="Email already registered")
+    
+    # Check if username is already registered
+    if find_user_by_username(user.username):
+        raise HTTPException(status_code=400, detail="Username already registered")
+    
+    # Create user in the database
+    created_user = add_user(user, user.password)
+    
+    return created_user
