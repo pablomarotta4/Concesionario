@@ -1,57 +1,92 @@
 from typing import List, Optional
 from models.users import User, UserDb
 from db.client import db_client
+from db.schemas.users import user_schema
 
 
-Users: List[UserDb] = [
-    UserDb(id=1, username="admin", name="admin", email="admin@example.com", password="$2a$12$RIKRgTo6hTAs.9cq0It6a.kh85bKrzEUPAHlMpkCGntasdY6w3PoK", is_admin=True),
-    UserDb(id=2, username="bob", name="Bob", email="bob@example.com", password="$2a$12$TMM0NL0DUiXfWkoDavYzHed7qpF0qpjss2iWOm6ekHFdpNX29dhHa", is_admin=False),
-    UserDb(id=3, username="charlie", name="Charlie", email="charlie@example.com", password="$2a$12$ygwk3JRCkQRPZX7CMLaeVO3JOh5PZFMOO6BJO8wtws.wRQom7138K", is_admin=False),
-]
+class UserAlreadyExistsError(Exception):
+    """Excepción personalizada para indicar que un usuario ya existe."""
+    pass
 
-def get_all_users() -> List[User]:
-    return [User(id=user.id, username=user.username, name=user.name, email=user.email, is_admin=user.is_admin) for user in Users]
+
+class UserNotFoundError(Exception):
+    """Excepción personalizada para indicar que un usuario no fue encontrado."""
+    pass
+
+
+Users: List[UserDb] = []
+
+
+def get_user_by_username(username: str) -> Optional[UserDb]:
+    try:
+        user_data = db_client.local.users.find_one({"username": username})
+        if user_data:
+            return UserDb(**user_schema(user_data))
+        return None
+    except Exception as e:
+        raise RuntimeError(f"Error al buscar usuario por nombre de usuario: {e}")
+
+
+def get_user_by_email(email: str) -> Optional[UserDb]:
+    try:
+        user_data = db_client.local.users.find_one({"email": email})
+        if user_data:
+            return UserDb(**user_schema(user_data))
+        return None
+    except Exception as e:
+        raise RuntimeError(f"Error al buscar usuario por correo electrónico: {e}")
+
+
+def get_all_users() -> List[UserDb]:
+    try:
+        users_data = db_client.local.users.find()
+        return [UserDb(**user_schema(user)) for user in users_data]
+    except Exception as e:
+        raise RuntimeError(f"Error al obtener todos los usuarios: {e}")
+
 
 def user_exists(username: str) -> bool:
-    return any(user.username == username for user in Users)
+    try:
+        return db_client.local.users.find_one({"username": username}) is not None
+    except Exception as e:
+        raise RuntimeError(f"Error al verificar si el usuario existe: {e}")
 
-def find_user_by_id(user_id: int) -> Optional[User]:
-    user = next((u for u in Users if u.id == user_id), None)
-    return User(id=user.id, username=user.username, name=user.name, email=user.email, is_admin=user.is_admin) if user else None
 
-def find_user_by_email(email: str) -> Optional[User]:
-    user = next((u for u in Users if u.email == email), None)
-    return User(id=user.id, username=user.username, name=user.name, email=user.email, is_admin=user.is_admin) if user else None
+def add_user(user: UserDb) -> UserDb:
+    try:
+        if user_exists(user.username):
+            raise UserAlreadyExistsError(f"El nombre de usuario '{user.username}' ya existe.")
+        user_dict = dict(user)
+        del user_dict["id"]
+        id = db_client.local.users.insert_one(user_dict).inserted_id
+        new_user = user_schema(db_client.local.users.find_one({"_id": id}))
+        return UserDb(**new_user)
+    except UserAlreadyExistsError as e:
+        raise e
+    except Exception as e:
+        raise RuntimeError(f"Error al agregar un nuevo usuario: {e}")
 
-def find_user_by_username(username: str) -> Optional[User]:
-    user = next((u for u in Users if u.username == username), None)
-    return User(id=user.id, username=user.username, name=user.name, email=user.email, is_admin=user.is_admin) if user else None
 
-def find_user(input: str) -> Optional[User]:
-    user = next((u for u in Users if u.username == input or u.email == input), None)
-    return User(id=user.id, username=user.username, name=user.name, email=user.email, is_admin=user.is_admin) if user else None
+def find_user_by_id(user_id: int) -> Optional[UserDb]:
+    try:
+        user_data = db_client.local.users.find_one({"id": user_id})
+        if user_data:
+            return UserDb(**user_schema(user_data))
+        raise UserNotFoundError(f"Usuario con ID '{user_id}' no encontrado.")
+    except UserNotFoundError as e:
+        raise e
+    except Exception as e:
+        raise RuntimeError(f"Error al buscar usuario por ID: {e}")
 
-def add_user(user: User, password: str) -> User:
-    # user_id = max(u.id for u in Users) + 1 if Users else 1
-    # new_user = UserDb(id=user_id, username=user.username, name=user.name, email=user.email, is_admin=user.is_admin, password=password)
-    # Users.append(new_user)
-    # return User(id=new_user.id, username=new_user.username, name=new_user.name, email=new_user.email, is_admin=new_user.is_admin)
-    if user_exists(user.username):
-        raise ValueError("Username already exists")
-    user_dict = dict(user)
-    del user_dict["id"]
-    db_client.local.users.insert_one(user_dict)
-    id = db_client.local.users.find_one({"username": user.username})["_id"]
-    return user
-
-def search_usersDB_returnPass(username: str) -> Optional[str]:
-    user = next((u for u in Users if u.username == username), None)
-    return user.password if user else None
-
-def search_usersDB(username: str) -> UserDb:
-    user = next((u for u in Users if u.username == username), None)
-    return user 
-
-def search_usersDB_returnId(username: str) -> Optional[int]:
-    user = next((u for u in Users if u.username == username), None)
-    return user.id if user else None
+def delete_user(user_id: int) -> bool:
+    try:
+        result = db_client.local.users.delete_one({"id": user_id})
+        if result.deleted_count == 0:
+            raise UserNotFoundError(f"Usuario con ID '{user_id}' no encontrado.")
+        return True
+    except UserNotFoundError as e:
+        raise e
+    except Exception as e:
+        raise RuntimeError(f"Error al eliminar usuario: {e}")
+    
+    
