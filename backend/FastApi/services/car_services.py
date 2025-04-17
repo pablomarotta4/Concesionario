@@ -1,4 +1,4 @@
-from models.cars import Car
+from models import Car, CarHistory 
 from typing import List, Optional
 
 cars = [
@@ -8,16 +8,25 @@ cars = [
         model="Corolla",
         year=2020,
         color="Blue",
-        price=20000.0,
+        price=18900.0,
         is_available=True,
-        mileage=15000,
-        engine_type="Gasoline",
+        mileage=25000,
+        engine_type="Inline-4",
         transmission="Automatic",
         fuel_type="Petrol",
         doors=4,
         seats=5,
-        description="A reliable and fuel-efficient sedan.",
-        image_url=""
+        max_speed=180,
+        acceleration=10.5,
+        horsepower=132,
+        torque=128,
+        weight=1300,
+        length=4.62,
+        width=1.77,
+        description="Reliable and fuel-efficient sedan.",
+        image_url="https://example.com/images/corolla.png",
+        paymenth_method="Financing",
+        history=car_histories[0]
     ),
     Car(
         id=2,
@@ -25,16 +34,25 @@ cars = [
         model="Civic",
         year=2019,
         color="Red",
-        price=22000.0,
-        is_available=True,
-        mileage=12000,
-        engine_type="Gasoline",
+        price=20500.0,
+        is_available=False,
+        mileage=31000,
+        engine_type="Inline-4 Turbo",
         transmission="Manual",
         fuel_type="Petrol",
         doors=4,
         seats=5,
-        description="A sporty and stylish compact car.",
-        image_url=""
+        max_speed=200,
+        acceleration=8.7,
+        horsepower=158,
+        torque=138,
+        weight=1275,
+        length=4.67,
+        width=1.80,
+        description="Sporty compact car with great handling.",
+        image_url="https://example.com/images/civic.png",
+        paymenth_method="Cash",
+        history=car_histories[1]
     )
 ]
 

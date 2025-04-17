@@ -1,4 +1,5 @@
 from pydantic import BaseModel
+from models.carhistory import CarHistory
 
 class Car(BaseModel):
     id: int
@@ -14,5 +15,15 @@ class Car(BaseModel):
     fuel_type: str
     doors: int
     seats: int
+    max_speed: int
+    acceleration: float
+    horsepower: int
+    torque: int
+    weight: int
+    length: float
+    width: float
     description: str
     image_url: str
+    paymenth_method: str 
+    history: CarHistory
+    

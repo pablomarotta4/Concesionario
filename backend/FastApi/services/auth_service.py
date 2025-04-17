@@ -54,3 +54,4 @@ async def auth_user(token: str = Depends(oauth2)):
 
 async def get_current_user(user: User = Depends(auth_user)):
     return user
+

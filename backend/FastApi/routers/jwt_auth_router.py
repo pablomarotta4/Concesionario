@@ -13,3 +13,7 @@ async def login_user(form_data: OAuth2PasswordRequestForm = Depends()):
 @router.get("/me")
 async def get_user_me(user: User = Depends(get_current_user)):
     return user
+
+@router.get("/logout")
+async def logout_user():
+    return {"message": "Logout successful"}
