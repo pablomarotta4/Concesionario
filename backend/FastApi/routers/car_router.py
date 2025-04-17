@@ -10,7 +10,7 @@ async def get_cars():
     return get_all_cars()
 
 @router.post("/newcar")
-async def create_new_car(car: Car):
+async def create_new_car(car: Car, current_user: User = Depends(get_current_user)):
     try:
         return await create_car(car)
     except Exception as e:

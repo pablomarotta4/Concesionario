@@ -52,19 +52,30 @@ def user_exists(username: str) -> bool:
         raise RuntimeError(f"Error al verificar si el usuario existe: {e}")
 
 
+from passlib.context import CryptContext
+
+crypt = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
 def add_user(user: UserDb) -> UserDb:
     try:
         if user_exists(user.username):
             raise UserAlreadyExistsError(f"El nombre de usuario '{user.username}' ya existe.")
+
         user_dict = dict(user)
         del user_dict["id"]
+
+        # 🔐 Hashear la contraseña
+        user_dict["password"] = crypt.hash(user.password)
+
         id = db_client.local.users.insert_one(user_dict).inserted_id
         new_user = user_schema(db_client.local.users.find_one({"_id": id}))
         return UserDb(**new_user)
+
     except UserAlreadyExistsError as e:
         raise e
     except Exception as e:
         raise RuntimeError(f"Error al agregar un nuevo usuario: {e}")
+
 
 
 def find_user_by_id(user_id: int) -> Optional[UserDb]:
@@ -89,4 +100,26 @@ def delete_user(username: str) -> bool:
         raise e
     except Exception as e:
         raise RuntimeError(f"Error al eliminar usuario por nombre de usuario: {e}")
+
+def find_user_by_username(username: str) -> Optional[UserDb]:
+    try:
+        user_data = db_client.local.users.find_one({"username": username})
+        if user_data:
+            return UserDb(**user_schema(user_data))
+        raise UserNotFoundError(f"Usuario con nombre de usuario '{username}' no encontrado.")
+    except UserNotFoundError as e:
+        raise e
+    except Exception as e:
+        raise RuntimeError(f"Error al buscar usuario por nombre de usuario: {e}")
+    
+def search_usersDB(username: str) -> Optional[UserDb]:
+    try:
+        user_data = db_client.local.users.find_one({"username": username})
+        if user_data:
+            return UserDb(**user_schema(user_data))
+        raise UserNotFoundError(f"Usuario con nombre de usuario '{username}' no encontrado.")
+    except UserNotFoundError as e:
+        raise e
+    except Exception as e:
+        raise RuntimeError(f"Error al buscar usuario por nombre de usuario: {e}")
     
