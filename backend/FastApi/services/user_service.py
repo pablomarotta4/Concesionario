@@ -1,6 +1,7 @@
 from typing import List, Optional
-from pydantic import BaseModel, EmailStr
 from models.users import User, UserDb
+from db.client import db_client
+
 
 Users: List[UserDb] = [
     UserDb(id=1, username="admin", name="admin", email="admin@example.com", password="$2a$12$RIKRgTo6hTAs.9cq0It6a.kh85bKrzEUPAHlMpkCGntasdY6w3PoK", is_admin=True),
@@ -10,6 +11,9 @@ Users: List[UserDb] = [
 
 def get_all_users() -> List[User]:
     return [User(id=user.id, username=user.username, name=user.name, email=user.email, is_admin=user.is_admin) for user in Users]
+
+def user_exists(username: str) -> bool:
+    return any(user.username == username for user in Users)
 
 def find_user_by_id(user_id: int) -> Optional[User]:
     user = next((u for u in Users if u.id == user_id), None)
@@ -28,10 +32,17 @@ def find_user(input: str) -> Optional[User]:
     return User(id=user.id, username=user.username, name=user.name, email=user.email, is_admin=user.is_admin) if user else None
 
 def add_user(user: User, password: str) -> User:
-    user_id = max(u.id for u in Users) + 1 if Users else 1
-    new_user = UserDb(id=user_id, username=user.username, name=user.name, email=user.email, is_admin=user.is_admin, password=password)
-    Users.append(new_user)
-    return User(id=new_user.id, username=new_user.username, name=new_user.name, email=new_user.email, is_admin=new_user.is_admin)
+    # user_id = max(u.id for u in Users) + 1 if Users else 1
+    # new_user = UserDb(id=user_id, username=user.username, name=user.name, email=user.email, is_admin=user.is_admin, password=password)
+    # Users.append(new_user)
+    # return User(id=new_user.id, username=new_user.username, name=new_user.name, email=new_user.email, is_admin=new_user.is_admin)
+    if user_exists(user.username):
+        raise ValueError("Username already exists")
+    user_dict = dict(user)
+    del user_dict["id"]
+    db_client.local.users.insert_one(user_dict)
+    id = db_client.local.users.find_one({"username": user.username})["_id"]
+    return user
 
 def search_usersDB_returnPass(username: str) -> Optional[str]:
     user = next((u for u in Users if u.username == username), None)
