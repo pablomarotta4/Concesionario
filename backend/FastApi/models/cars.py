@@ -3,7 +3,7 @@ from pydantic import BaseModel
 from models.carhistory import CarHistory
 
 class Car(BaseModel):
-    id: int
+    id: Optional[str] = None
     brand: str
     model: str
     year: int
@@ -24,7 +24,7 @@ class Car(BaseModel):
     length: float
     width: float
     description: str
-    image_url: str
+    image_url: Optional[str] = None
     paymenth_method: str 
-    history: CarHistory
+    history: Optional[CarHistory] = None  
     
