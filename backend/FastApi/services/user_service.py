@@ -12,10 +12,9 @@ class UserDb(User):
     password: str
 
 Users: List[UserDb] = [
-    UserDb(id=1, username="admin", name="admin", email="admin@example.com", password="admin", is_admin=True),
-    UserDb(id=2, username="bob", name="Bob", email="bob@example.com", password="password456", is_admin=False),
-    UserDb(id=3, username="charlie", name="Charlie", email="charlie@example.com", password="password789", is_admin=False),
-    UserDb(id=4, username="alice", name="Alice", email="alice@example.com", password="password123", is_admin=False),
+    UserDb(id=1, username="admin", name="admin", email="admin@example.com", password="$2a$12$RIKRgTo6hTAs.9cq0It6a.kh85bKrzEUPAHlMpkCGntasdY6w3PoK", is_admin=True),
+    UserDb(id=2, username="bob", name="Bob", email="bob@example.com", password="$2a$12$TMM0NL0DUiXfWkoDavYzHed7qpF0qpjss2iWOm6ekHFdpNX29dhHa", is_admin=False),
+    UserDb(id=3, username="charlie", name="Charlie", email="charlie@example.com", password="$2a$12$ygwk3JRCkQRPZX7CMLaeVO3JOh5PZFMOO6BJO8wtws.wRQom7138K", is_admin=False),
 ]
 
 def get_all_users() -> List[User]:
@@ -43,6 +42,14 @@ def add_user(user: User, password: str) -> User:
     Users.append(new_user)
     return User(id=new_user.id, username=new_user.username, name=new_user.name, email=new_user.email, is_admin=new_user.is_admin)
 
-def search_usersDB(username: str) -> Optional[str]:
+def search_usersDB_returnPass(username: str) -> Optional[str]:
     user = next((u for u in Users if u.username == username), None)
     return user.password if user else None
+
+def search_usersDB(username: str) -> UserDb:
+    user = next((u for u in Users if u.username == username), None)
+    return user 
+
+def search_usersDB_returnId(username: str) -> Optional[int]:
+    user = next((u for u in Users if u.username == username), None)
+    return user.id if user else None
