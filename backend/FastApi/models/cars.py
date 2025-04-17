@@ -1,3 +1,4 @@
+from typing import Optional
 from pydantic import BaseModel
 from models.carhistory import CarHistory
 
@@ -15,7 +16,7 @@ class Car(BaseModel):
     fuel_type: str
     doors: int
     seats: int
-    max_speed: int
+    max_speed: Optional[int] = None
     acceleration: float
     horsepower: int
     torque: int

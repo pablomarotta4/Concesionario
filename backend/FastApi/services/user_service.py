@@ -1,15 +1,6 @@
 from typing import List, Optional
 from pydantic import BaseModel, EmailStr
-
-class User(BaseModel):
-    id: int
-    username: str
-    name: str
-    email: EmailStr
-    is_admin: bool
-
-class UserDb(User):
-    password: str
+from models.users import User, UserDb
 
 Users: List[UserDb] = [
     UserDb(id=1, username="admin", name="admin", email="admin@example.com", password="$2a$12$RIKRgTo6hTAs.9cq0It6a.kh85bKrzEUPAHlMpkCGntasdY6w3PoK", is_admin=True),
