@@ -7,3 +7,7 @@ def user_schema(user) -> dict:
         "is_admin": user["is_admin"],
         "password": user["password"],
     }
+
+def users_schema(users) -> list:
+    return [user_schema(user) for user in users]
+

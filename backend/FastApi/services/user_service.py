@@ -1,7 +1,7 @@
 from typing import List, Optional
 from models.users import User, UserDb
 from db.client import db_client
-from db.schemas.users import user_schema
+from db.schemas.users import user_schema, users_schema
 
 
 class UserAlreadyExistsError(Exception):
@@ -40,7 +40,7 @@ def get_user_by_email(email: str) -> Optional[UserDb]:
 def get_all_users() -> List[UserDb]:
     try:
         users_data = db_client.local.users.find()
-        return [UserDb(**user_schema(user)) for user in users_data]
+        return [UserDb(**user) for user in users_schema(users_data)]
     except Exception as e:
         raise RuntimeError(f"Error al obtener todos los usuarios: {e}")
 
@@ -78,15 +78,15 @@ def find_user_by_id(user_id: int) -> Optional[UserDb]:
     except Exception as e:
         raise RuntimeError(f"Error al buscar usuario por ID: {e}")
 
-def delete_user(user_id: int) -> bool:
+
+def delete_user(username: str) -> bool:
     try:
-        result = db_client.local.users.delete_one({"id": user_id})
+        result = db_client.local.users.delete_one({"username": username})
         if result.deleted_count == 0:
-            raise UserNotFoundError(f"Usuario con ID '{user_id}' no encontrado.")
+            raise UserNotFoundError(f"Usuario con nombre de usuario '{username}' no encontrado.")
         return True
     except UserNotFoundError as e:
         raise e
     except Exception as e:
-        raise RuntimeError(f"Error al eliminar usuario: {e}")
-    
+        raise RuntimeError(f"Error al eliminar usuario por nombre de usuario: {e}")
     
