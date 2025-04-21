@@ -4,20 +4,22 @@ from services.car_services import *
 
 router = APIRouter(prefix="/cars", tags=["Cars"])
 
-
 @router.get("/")
-async def get_cars():
-    return get_all_cars()
+def get_cars():
+    try:
+        return get_all_cars()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/newcar")
-async def create_new_car(car: Car, current_user: User = Depends(get_current_user)):
+def create_new_car(car: Car):
     try:
-        return await create_car(car)
+        return create_car(car)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     
 @router.put("/updatecar/{car_id}")
-async def update_car(car_id: str, car: Car):
+def update_car_endpoint(car_id: str, car: Car):
     try:
         updated_car = update_car(car_id, car)
         if updated_car:
@@ -27,7 +29,7 @@ async def update_car(car_id: str, car: Car):
         raise HTTPException(status_code=500, detail=str(e))
     
 @router.delete("/deletecar/{car_id}")
-async def delete_car(car_id: str):
+def delete_car_endpoint(car_id: str):
     try:
         if delete_car(car_id):
             return {"message": "Car deleted successfully"}

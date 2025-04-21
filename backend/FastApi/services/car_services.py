@@ -9,7 +9,7 @@ from fastapi import Depends, HTTPException
 from services.auth_service import get_current_user
 from models.users import User
 
-async def create_car(car: Car, current_user: User = Depends(get_current_user)) -> Car:
+def create_car(car: Car) -> Car:
     try:
         car_dict = car.dict(exclude={"id", "history"})
         car_history = getattr(car, "history", None)
@@ -18,13 +18,13 @@ async def create_car(car: Car, current_user: User = Depends(get_current_user)) -
         car_id = str(result.inserted_id)
 
         if car_history is not None:
-            await create_car_history(car_id, car_history)
+            create_car_history(car_id, car_history)
 
         new_car_data = db_client.local.cars.find_one({"_id": result.inserted_id})
         car_data = car_schema(new_car_data)
         car_data["id"] = car_id
 
-        car_history_db = await get_car_history(car_id)
+        car_history_db = get_car_history(car_id)
         if car_history_db:
             car_data["history"] = car_history_db
 
@@ -33,16 +33,15 @@ async def create_car(car: Car, current_user: User = Depends(get_current_user)) -
     except Exception as e:
         raise RuntimeError(f"Error al crear el coche: {e}")
 
-
-async def update_car(car_id: str, car: Car, current_user: User = Depends(get_current_user)) -> Car:
+def update_car(car_id: str, car: Car) -> Car:
     try:
         car_dict = dict(car)
         del car_dict["id"]
         car_history = car_dict.pop("history", None)
-        await db_client.local.cars.update_one({"_id": ObjectId(car_id)}, {"$set": car_dict})
+        db_client.local.cars.update_one({"_id": ObjectId(car_id)}, {"$set": car_dict})
         if car_history is not None:
-            await update_car_history(car_id, car_history)
-        return await get_car_by_id(car_id)
+            update_car_history(car_id, car_history)
+        return get_car_by_id(car_id)
     except Exception as e:
         raise RuntimeError(f"Error al actualizar el coche: {e}")
 
@@ -61,14 +60,14 @@ def linkcar_history(car_id: str, car_history: CarHistory, current_user: User = D
     except Exception as e:
         raise RuntimeError(f"Error al vincular el historial del coche: {e}")
     
-async def get_car_by_id(car_id: str) -> Optional[Car]:
+def get_car_by_id(car_id: str) -> Optional[Car]:
     try:
-        car_data = await db_client.local.cars.find_one({"_id": ObjectId(car_id)})
+        car_data = db_client.local.cars.find_one({"_id": ObjectId(car_id)})
         if car_data:
             car = car_schema(car_data)
             car["id"] = str(car_data["_id"])
 
-            history_data = await db_client.local.car_histories.find_one({"car_id": car["id"]})
+            history_data = db_client.local.car_histories.find_one({"car_id": car["id"]})
             if history_data:
                 car["history"] = carhistory_schema(history_data)
 
