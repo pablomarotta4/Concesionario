@@ -17,12 +17,12 @@ async def create_new_car(car: Car, current_user: User = Depends(get_current_user
         raise HTTPException(status_code=500, detail=str(e))
     
 @router.put("/updatecar/{car_id}")
-async def update_car(car_id: str, car: Car):
+def update_car_endpoint(car_id: str, car: Car):
     try:
         updated_car = update_car(car_id, car)
-        if updated_car:
-            return updated_car
-        raise HTTPException(status_code=404, detail="Car not found")
+        return updated_car
+    except HTTPException as e:
+        raise e
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     
