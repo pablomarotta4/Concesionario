@@ -4,13 +4,10 @@ import json
 from dotenv import load_dotenv
 import os
 
-# Cargar variables de entorno
 load_dotenv()
 
-# Configuración de la API
 API_URL = "http://localhost:8000"  # URL de tu API FastAPI
 
-# Función para manejar el login
 def login(username: str, password: str):
     try:
         response = requests.post(
@@ -26,7 +23,6 @@ def login(username: str, password: str):
         st.error(f"Error al conectar con la API: {str(e)}")
         return None
 
-# Función para obtener la lista de autos
 def get_cars(token: str):
     try:
         headers = {"Authorization": f"Bearer {token}"}
@@ -38,7 +34,6 @@ def get_cars(token: str):
         st.error(f"Error al obtener los autos: {str(e)}")
         return []
 
-# Función para crear un auto
 def create_car(token: str, car_data: dict):
     try:
         headers = {"Authorization": f"Bearer {token}"}
@@ -84,6 +79,15 @@ def login_page():
                 st.error("Credenciales inválidas")
         else:
             st.warning("Por favor ingrese usuario y contraseña")
+
+def delete_car(token: str, car_id: str) -> bool:
+    try:
+        headers = {"Authorization": f"Bearer {token}"}
+        response = requests.delete(f"{API_URL}/cars/deletecar/{car_id}", headers=headers)
+        return response.status_code == 200
+    except Exception as e:
+        st.error(f"Error al eliminar el auto: {str(e)}")
+        return False    
 
 # Página principal del backoffice
 def main_page():
@@ -270,6 +274,15 @@ def main_page():
                                 new_description = st.text_area("Descripción", value=car.get('description', ''))
                                 new_payment_method = st.text_input("Método de Pago", value=car.get('paymenth_method', ''))
                                 new_image_url = st.text_input("URL de la Imagen", value=car.get('image_url', ''))
+
+                            if st.form_submit_button("Eliminar Auto"):
+                                if delete_car(st.session_state.token, car.get('id', '')):
+                                    st.success("Auto eliminado correctamente")
+                                    st.rerun()
+                                else:
+                                    st.error("Error al eliminar el auto")
+                                    
+                                                 
                             
                             if st.form_submit_button("Actualizar"):
                                 car_data = {
