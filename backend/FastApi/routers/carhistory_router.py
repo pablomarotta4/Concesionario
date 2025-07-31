@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from models import CarHistory
+from models.carhistory import CarHistory
 from services.carhistory_service import get_car_history, create_car_history, delete_car_history, update_car_history
 
 router = APIRouter(prefix="/carhistory", tags=["Car History"])
