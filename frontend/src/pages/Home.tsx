@@ -4,10 +4,12 @@ import { Car, ArrowRight, Star, MapPin, Calendar, Users } from 'lucide-react';
 import { carsAPI } from '../services/api';
 import { Car as CarType } from '../types';
 import { getCarImageUrl } from '../services/imageService';
+import { useAuth } from '../contexts/AuthContext';
 
 const Home: React.FC = () => {
   const [featuredCars, setFeaturedCars] = useState<CarType[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const { user, isAuthenticated } = useAuth(); // Asegúrate de obtener isAuthenticated también
 
   useEffect(() => {
     const fetchFeaturedCars = async () => {
@@ -25,6 +27,12 @@ const Home: React.FC = () => {
 
     fetchFeaturedCars();
   }, []);
+
+  // Añade este useEffect para forzar re-render cuando cambie el estado de autenticación
+  useEffect(() => {
+    // Este useEffect se ejecutará cada vez que user o isAuthenticated cambien
+    console.log('Auth state changed:', { user, isAuthenticated });
+  }, [user, isAuthenticated]);
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('es-ES', {
@@ -46,6 +54,7 @@ const Home: React.FC = () => {
             <p className="text-xl md:text-2xl mb-8 text-primary-100">
               La mejor selección de vehículos con las condiciones más favorables del mercado
             </p>
+            {/* Mostrar contenido condicional basado en el estado de autenticación */}
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link
                 to="/cars"
@@ -61,10 +70,19 @@ const Home: React.FC = () => {
                 Contactar
               </Link>
             </div>
+            {/* Mensaje de bienvenida si está autenticado */}
+            {user && (
+              <div className="mt-4">
+                <p className="text-primary-100">
+                  ¡Bienvenido, {user.name || user.email}!
+                </p>
+              </div>
+            )}
           </div>
         </div>
       </section>
 
+      {/* Rest of your component remains the same */}
       {/* Features Section */}
       <section className="py-16 bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -233,4 +251,4 @@ const Home: React.FC = () => {
   );
 };
 
-export default Home; 
+export default Home;
