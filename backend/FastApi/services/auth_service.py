@@ -12,7 +12,8 @@ ALGORITHM = "HS256"
 ACCESS_TOKEN_DURATION = 90
 SECRET = "1e98911d53c5b64948b3ea50220409d2"
 
-crypt = CryptContext(schemes=["bcrypt"])
+# Usar la misma configuración que en user_service.py
+crypt = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 async def login(form_data: OAuth2PasswordRequestForm = Depends()):
     user_db = find_user_by_username(form_data.username)
@@ -41,10 +42,10 @@ async def auth_user(token: str = Depends(oauth2)):
         payload = jwt.decode(token, SECRET, algorithms=[ALGORITHM])
         username: str = payload.get("sub")
         if username is None:
-            raise HTTPException(status_code=401, detail="Invalid authentication aaaacredentials")
+            raise HTTPException(status_code=401, detail="Invalid authentication credentials")
         
     except JWTError:
-        raise HTTPException(status_code=401, detail="Invalid authentication aaaaaaaaaaacredentials")
+        raise HTTPException(status_code=401, detail="Invalid authentication credentials")
 
     user = find_user_by_username(username)
     if user is None:
@@ -54,4 +55,3 @@ async def auth_user(token: str = Depends(oauth2)):
 
 async def get_current_user(user: User = Depends(auth_user)):
     return user
-
