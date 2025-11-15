@@ -88,4 +88,4 @@ seed: ## Ejecutar seed de la base de datos
 	docker-compose -f $(COMPOSE_FILE) exec backend python seed_database.py
 
 seed-local: ## Ejecutar seed localmente (sin Docker)
-	cd Concesionario/backend/FastApi && python seed_database.py
+	cd backend/FastApi && python seed_database.py

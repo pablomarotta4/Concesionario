@@ -37,15 +37,17 @@ Concesionario/
 │       │   └── user_service.py
 │       ├── static/                 # Archivos estáticos
 │       │   └── img/
-│       └── tests/                  # ✨ Tests organizados
-│           ├── __init__.py
-│           ├── test_api.py
-│           ├── test_direct.py
-│           ├── test_recommendations.py
-│           ├── test_service.py
-│           ├── test_simple_embeddings.py
-│           ├── final_test.py
-│           └── server_test.py
+│       ├── tests/                  # ✨ Tests organizados
+│       │   ├── __init__.py
+│       │   ├── test_api.py
+│       │   ├── test_direct.py
+│       │   ├── test_recommendations.py
+│       │   ├── test_service.py
+│       │   ├── test_simple_embeddings.py
+│       │   ├── final_test.py
+│       │   └── server_test.py
+│       ├── seed_database.py        # ✨ Script de seed mejorado
+│       └── create_test_user.py     # ✨ Script para crear usuarios
 │
 ├── frontend/                       # Frontend React + TypeScript
 │   ├── public/
@@ -83,10 +85,6 @@ Concesionario/
 │   ├── 1_Pooling/
 │   └── 2_Dense/
 │
-├── scripts/                        # ✨ Scripts de utilidad
-│   ├── seed_database.py            # Poblar base de datos
-│   └── create_test_user.py         # Crear usuario de prueba
-│
 ├── docs/                           # ✨ Documentación organizada
 │   ├── README_DOCKER.md            # Instrucciones Docker
 │   ├── README_SEED.md              # Guía de seed
@@ -119,9 +117,9 @@ Concesionario/
 
 ### ✅ Reorganizaciones
 - 📂 Tests movidos a `backend/FastApi/tests/`
-- 📂 Scripts movidos a `scripts/`
 - 📂 Documentación organizada en `docs/`
 - 📂 Docs históricos archivados en `docs/archived/`
+- 📂 Scripts permanecen en `backend/FastApi/` para fácil acceso desde Docker
 
 ### ✅ Mejoras
 - ✨ `.gitignore` ampliado y mejorado
@@ -172,8 +170,10 @@ docker-compose up --build
 ### Scripts
 ```bash
 # Poblar base de datos
-python scripts/seed_database.py
+make seed  # Con Docker
+# O
+cd backend/FastApi && python seed_database.py  # Localmente
 
 # Crear usuario de prueba
-python scripts/create_test_user.py
+cd backend/FastApi && python create_test_user.py
 ```
