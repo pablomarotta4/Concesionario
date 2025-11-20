@@ -210,11 +210,15 @@ class ConversationalAgent:
         """Maneja el caso cuando no se encuentran autos"""
         try:
             system_prompt = """Eres un asistente amigable de un concesionario.
-Cuando no encuentras autos que coincidan, sugiere ajustar los criterios de búsqueda.
-IMPORTANTE: Sé breve (máximo 50 palabras)."""
+            Cuando no encuentras autos, sugiere otras opciones de forma natural.
+            CRÍTICO: 
+            - NO uses palabras técnicas como "filtros", "criterios", "parámetros", "ajustar", "rango".
+            - Habla como un vendedor humano: "¿Qué tal si buscamos algo más económico?" o "¿Te gustaría ver modelos de otro año?".
+            - Sé breve (máximo 40 palabras)."""
             
-            user_prompt = f"""No encontré autos que coincidan con estos filtros: {filters}
-Sugiere al cliente ajustar sus criterios de búsqueda de forma amigable y BREVE."""
+            user_prompt = f"""No encontré autos con estas características: {filters}
+            Genera una sugerencia amigable para ver otras opciones.
+            RECUERDA: No menciones "filtros" ni "ajustar criterios". Pregunta sobre preferencias."""
             
             response = await self.llm_service.generate_response(
                 [{"role": "user", "content": user_prompt}],

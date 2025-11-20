@@ -134,10 +134,37 @@ class FilterExtractor:
                 combined["type"] = "Sedan"
             elif any(word in message_lower for word in ["hatchback", "compacto"]):
                 combined["type"] = "Hatchback"
-            elif any(word in message_lower for word in ["pickup", "camioneta"]):
+            elif any(word in message_lower for word in ["pickup"]):
                 combined["type"] = "Pickup"
             elif any(word in message_lower for word in ["van", "minivan", "furgoneta"]):
                 combined["type"] = "Van"
+        
+        # Detectar tamaño/espacio desde el mensaje
+        message_lower = original_message.lower()
+        if any(word in message_lower for word in ["grande", "amplio", "espacioso", "familiar"]):
+            # Usuario busca vehículo grande
+            if "seats" not in combined:
+                combined["seats"] = {"min": 6}  # Al menos 6 asientos para "grande"
+            if "size_category" not in combined:
+                combined["size_category"] = "large"
+        
+        # Detectar potencia desde el mensaje
+        if any(word in message_lower for word in ["potente", "deportivo", "rápido", "veloz"]):
+            # Usuario busca vehículo potente
+            if "horsepower" not in combined:
+                combined["horsepower"] = {"min": 180}  # Al menos 180 HP para "potente"
+        
+        # Detectar economía/precio desde el mensaje
+        if any(word in message_lower for word in ["económico", "barato", "accesible"]):
+            # Usuario busca vehículo económico
+            if "price" not in combined:
+                combined["price"] = {"max": 25000}
+        
+        # Detectar lujo desde el mensaje
+        if any(word in message_lower for word in ["lujo", "premium", "exclusivo"]):
+            # Usuario busca vehículo de lujo
+            if "price" not in combined:
+                combined["price"] = {"min": 45000}
         
         return combined
     

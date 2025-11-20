@@ -8,6 +8,7 @@ import Login from './pages/Login';
 import Cars from './pages/Cars';
 import CarDetail from './pages/CarDetail';
 import Admin from './pages/Admin';
+import Chatbot from './pages/Chatbot';
 
 // Protected Route Component
 const ProtectedRoute: React.FC<{ children: React.ReactNode; adminOnly?: boolean }> = ({ 
@@ -59,6 +60,12 @@ const AppContent: React.FC = () => {
         <Route path="/cars/:id" element={
           <Layout>
             <CarDetail />
+          </Layout>
+        } />
+        
+        <Route path="/chatbot" element={
+          <Layout>
+            <Chatbot />
           </Layout>
         } />
         

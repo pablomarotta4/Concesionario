@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { Car, CarHistory, User, AuthResponse, LoginForm, RegisterForm } from '../types';
+import { Car, CarHistory, User, AuthResponse, LoginForm, RegisterForm, ChatbotMessageRequest, ChatbotMessageResponse } from '../types';
 
 const API_BASE_URL = 'http://localhost:8000';
 
@@ -100,6 +100,31 @@ export const carHistoryAPI = {
 
   deleteCarHistory: async (carId: string): Promise<void> => {
     await api.delete(`/carhistory/deletecarhistory/${carId}`);
+  },
+};
+
+// Chatbot API
+export const chatbotAPI = {
+  sendMessage: async (request: ChatbotMessageRequest): Promise<ChatbotMessageResponse> => {
+    const response = await api.post('/api/chatbot/message', request);
+    return response.data;
+  },
+
+  resetSession: async (sessionId: string = 'default'): Promise<{ message: string; session_id: string }> => {
+    const response = await api.post('/api/chatbot/reset', null, {
+      params: { session_id: sessionId },
+    });
+    return response.data;
+  },
+
+  getSessionInfo: async (sessionId: string): Promise<any> => {
+    const response = await api.get(`/api/chatbot/session/${sessionId}`);
+    return response.data;
+  },
+
+  healthCheck: async (): Promise<{ status: string; service?: string; sessions_active?: number; reason?: string }> => {
+    const response = await api.get('/api/chatbot/health');
+    return response.data;
   },
 };
 

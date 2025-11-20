@@ -2,6 +2,7 @@ import os
 import httpx
 import json
 import logging
+import re
 from typing import List, Dict, Any, Optional
 from enum import Enum
 
@@ -204,15 +205,27 @@ Retorna SOLO el JSON, sin texto adicional."""
         """
         try:
             system_prompt = """Eres un asistente amigable de un concesionario de autos.
-Genera UNA pregunta breve y natural para aclarar las preferencias del cliente.
-IMPORTANTE: 
-- Haz SOLO UNA pregunta a la vez
-- Máximo 20 palabras
-- Sé directo y amigable
-- No hagas listas ni múltiples preguntas"""
+            Genera UNA pregunta breve y natural para conocer mejor lo que busca el cliente.
+            CRÍTICO - REGLAS DE ESTILO:
+            - NUNCA uses palabras como "filtros", "parámetros", "criterios", "configuración", "rango".
+            - Habla de "preferencias", "gustos", "necesidades", "lo que buscas".
+            - Haz SOLO UNA pregunta a la vez.
+            - No te extiendas mucho, preguntas concisas.
+            - Sé directo y amigable, como una conversación casual."""
 
             # Tomar solo la primera información faltante
             first_missing = missing_info[0] if missing_info else "tus preferencias"
+            
+            # Traducir términos técnicos a lenguaje natural
+            missing_map = {
+                "presupuesto": "cuánto te gustaría invertir", "cual es tu presupuesto"
+                "tamaño o número de asientos": "qué tamaño de auto necesitas",
+                "price": "tu presupuesto",
+                "seats": "cuántas personas viajarán",
+                "horsepower": "la potencia del motor",
+                "brand": "si tienes alguna marca favorita"
+            }
+            natural_missing = missing_map.get(first_missing, first_missing)
             
             context_str = ""
             if context and "conversation" in context:
@@ -223,10 +236,10 @@ IMPORTANTE:
                     if last_user_msg:
                         context_str = f"\nEl cliente dijo: \"{last_user_msg[-1]}\""
             
-            user_prompt = f"""Necesito hacer UNA pregunta breve al cliente sobre: {first_missing}
-{context_str}
-
-Genera UNA pregunta directa y amigable (máximo 20 palabras):"""
+            user_prompt = f"""Necesito preguntar amablemente sobre: {natural_missing}
+            {context_str}
+            
+            Genera UNA pregunta natural (sin mencionar "filtros" ni palabras técnicas):"""
 
             messages = [{"role": "user", "content": user_prompt}]
             
@@ -271,16 +284,18 @@ Genera UNA pregunta directa y amigable (máximo 20 palabras):"""
         try:
             system_prompt = """Eres un asistente experto de un concesionario de autos.
 Genera respuestas BREVES, naturales y amigables en español.
-IMPORTANTE:
+CRÍTICO - REGLAS ABSOLUTAS:
+- SOLO menciona los autos que se te proporcionan en la lista. NUNCA inventes, sugieras o menciones otros autos.
+- NO menciones Toyota Corolla, Honda Civic u otros autos a menos que estén explícitamente en la lista proporcionada.
 - Máximo 150 palabras
 - Presenta los autos de forma concisa
 - Menciona solo las características más importantes (precio, marca, modelo, año)
 - No hagas listas largas ni descripciones extensas
 - Sé directo y profesional"""
 
-            # Preparar información de autos (solo los más relevantes)
+            # Preparar información de autos (TODOS los autos, no solo 3)
             cars_info = []
-            for i, car in enumerate(cars[:3], 1):  # Máximo 3 autos en la respuesta
+            for i, car in enumerate(cars, 1):  # Mostrar TODOS los autos
                 car_str = f"{car.get('brand', '')} {car.get('model', '')} {car.get('year', '')}"
                 car_str += f" - ${car.get('price', 0):,.0f}"
                 if car.get('seats'):
@@ -289,11 +304,12 @@ IMPORTANTE:
             
             cars_text = "\n".join(cars_info) if cars_info else "No encontré autos que coincidan exactamente."
             
-            user_prompt = f"""Encontré estos autos para el cliente:
+            user_prompt = f"""Lista EXACTA de autos disponibles para el cliente (SOLO menciona estos, NUNCA otros):
 
 {cars_text}
 
-Genera una respuesta BREVE (máximo 150 palabras) presentando estas opciones.
+Genera una respuesta BREVE (máximo 150 palabras) presentando ÚNICAMENTE estos autos de la lista.
+IMPORTANTE: NO inventes, sugieras o menciones ningún otro auto que no esté en la lista de arriba.
 Menciona solo lo esencial: marca, modelo, año y precio.
 Sé directo y amigable."""
 
@@ -308,9 +324,48 @@ Sé directo y amigable."""
             response = await self.generate_response(
                 messages, 
                 system_prompt=system_prompt, 
-                temperature=0.7,
-                max_tokens=200  # Limitar tokens para respuestas más cortas
+                temperature=0.3,  # Reducir temperatura para ser más determinista y seguir instrucciones
+                max_tokens=500  # Limitar tokens para respuestas más cortas
             )
+            
+            # Filtrar menciones de autos que no están en la lista proporcionada
+            # Extraer marcas y modelos de los autos proporcionados
+            provided_cars = set()
+            for car in cars[:3]:
+                brand = car.get('brand', '').lower()
+                model = car.get('model', '').lower()
+                if brand and model:
+                    provided_cars.add(f"{brand} {model}")
+                    provided_cars.add(brand)
+                    provided_cars.add(model)
+            
+            # Verificar si la respuesta menciona autos no proporcionados
+            response_lower = response.lower()
+            # Lista de autos comunes que el LLM podría mencionar incorrectamente
+            common_cars_to_filter = ['toyota corolla', 'honda civic', 'corolla', 'civic']
+            for car_name in common_cars_to_filter:
+                if car_name not in provided_cars and car_name in response_lower:
+                    # Reemplazar menciones no deseadas
+                    # Patrón para encontrar menciones del auto no deseado
+                    pattern = re.compile(r'\b' + re.escape(car_name) + r'\b', re.IGNORECASE)
+                    if pattern.search(response):
+                        logger.warning(f"Filtrado mención no deseada de '{car_name}' en respuesta")
+                        # Eliminar oraciones que mencionen estos autos
+                        sentences = response.split('.')
+                        filtered_sentences = []
+                        for sentence in sentences:
+                            sentence_lower = sentence.lower()
+                            should_include = True
+                            for unwanted_car in common_cars_to_filter:
+                                if unwanted_car not in provided_cars and unwanted_car in sentence_lower:
+                                    should_include = False
+                                    break
+                            if should_include:
+                                filtered_sentences.append(sentence)
+                        response = '. '.join(filtered_sentences).strip()
+                        if response and not response.endswith('.'):
+                            response += '.'
+                        break
             
             # Limitar longitud manualmente (máximo 800 caracteres ~ 150 palabras)
             response = response.strip()

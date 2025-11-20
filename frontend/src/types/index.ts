@@ -66,4 +66,29 @@ export interface RegisterForm {
   name: string;
   email: string;
   password: string;
+}
+
+// Chatbot Types
+export interface ChatbotMessage {
+  id: string;
+  text: string;
+  sender: 'user' | 'bot';
+  timestamp: Date;
+  cars?: Car[];
+  needsClarification?: boolean;
+  clarificationQuestion?: string;
+}
+
+export interface ChatbotMessageRequest {
+  message: string;
+  session_id?: string;
+}
+
+export interface ChatbotMessageResponse {
+  response: string;
+  cars: Car[];
+  filters_extracted: Record<string, any>;
+  needs_clarification: boolean;
+  clarification_question?: string;
+  session_id: string;
 } 

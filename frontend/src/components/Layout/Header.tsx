@@ -9,7 +9,8 @@ import {
   X, 
   Settings,
   Home,
-  Plus
+  Plus,
+  MessageCircle
 } from 'lucide-react';
 
 const Header: React.FC = () => {
@@ -60,6 +61,13 @@ const Header: React.FC = () => {
             >
               <Car className="h-4 w-4 inline mr-1" />
               Vehículos
+            </Link>
+            <Link
+              to="/chatbot"
+              className="text-gray-700 hover:text-primary-600 px-3 py-2 rounded-md text-sm font-medium transition-colors"
+            >
+              <MessageCircle className="h-4 w-4 inline mr-1" />
+              Chatbot
             </Link>
             {isAuthenticated && user?.is_admin && (
               <Link
@@ -152,6 +160,14 @@ const Header: React.FC = () => {
               >
                 <Car className="h-4 w-4 inline mr-2" />
                 Vehículos
+              </Link>
+              <Link
+                to="/chatbot"
+                className="text-gray-700 hover:text-primary-600 block px-3 py-2 rounded-md text-base font-medium"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                <MessageCircle className="h-4 w-4 inline mr-2" />
+                Chatbot
               </Link>
               {isAuthenticated && user?.is_admin && (
                 <Link

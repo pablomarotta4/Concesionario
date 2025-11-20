@@ -1,4 +1,5 @@
 from typing import List, Dict, Any, Optional
+import random
 from bson import ObjectId
 import logging
 from db.client import get_database
@@ -188,18 +189,27 @@ class CarSearchService:
                 cursor = self.cars_collection.find(query).limit(limit * 2)
                 cars = list(cursor)
             
-            # Convertir a formato de respuesta
-            results = []
-            for car in cars[:limit]:
+            # Calculate relevance scores for intelligent ranking
+            scored_results = []
+            for car in cars:
                 try:
                     car_dict = car_schema(car)
                     car_dict["id"] = str(car["_id"])
-                    results.append(car_dict)
+                    
+                    # Calculate relevance score based on filters
+                    score = self._calculate_relevance_score(car_dict, filters)
+                    scored_results.append((car_dict, score))
                 except Exception as e:
                     logger.error(f"Error procesando auto {car.get('_id')}: {e}")
                     continue
             
-            logger.info(f"Encontrados {len(results)} autos")
+            # Sort by relevance score (highest first)
+            scored_results.sort(key=lambda x: x[1], reverse=True)
+            
+            # Group into tiers for smart shuffling
+            results = self._apply_tiered_variety(scored_results, limit)
+            
+            logger.info(f"Encontrados {len(results)} autos con scoring inteligente")
             return results
             
         except Exception as e:
@@ -242,6 +252,163 @@ class CarSearchService:
         
         return relaxed
     
+    def _calculate_relevance_score(self, car: Dict[str, Any], filters: Dict[str, Any]) -> float:
+        """
+        Calculate how well a car matches the given filters.
+        Higher score = better match.
+        
+        Args:
+            car: Car data
+            filters: Applied filters
+            
+        Returns:
+            float: Relevance score (0-100+)
+        """
+        score = 0.0
+        
+        # Exact type match is highly important (+15 points)
+        if "type" in filters and car.get("type") == filters["type"]:
+            score += 15
+        
+        # Brand match (+10 points)
+        if "brand" in filters:
+            if isinstance(filters["brand"], str) and car.get("brand") == filters["brand"]:
+                score += 10
+            elif isinstance(filters["brand"], list) and car.get("brand") in filters["brand"]:
+                score += 10
+        
+        # Seats match (+12 points for exact match, +8 for being in range)
+        if "seats" in filters:
+            car_seats = car.get("seats", 0)
+            filter_seats = filters["seats"]
+            if isinstance(filter_seats, dict):
+                min_seats = filter_seats.get("min", 0)
+                max_seats = filter_seats.get("max", 100)
+                if min_seats <= car_seats <= max_seats:
+                    # Perfect range match
+                    score += 12
+                    # Bonus if close to minimum (what user wants)
+                    if car_seats == min_seats or car_seats == min_seats + 1:
+                        score += 3
+            elif isinstance(filter_seats, int) and car_seats >= filter_seats:
+                score += 12
+        
+        # Horsepower/Power match (+10 points)
+        if "horsepower" in filters:
+            car_hp = car.get("horsepower", 0)
+            filter_hp = filters["horsepower"]
+            if isinstance(filter_hp, dict):
+                min_hp = filter_hp.get("min", 0)
+                max_hp = filter_hp.get("max", 9999)
+                if min_hp <= car_hp <= max_hp:
+                    score += 10
+                    # Bonus for exceeding minimum significantly
+                    if car_hp >= min_hp + 50:
+                        score += 5
+            elif isinstance(filter_hp, int) and car_hp >= filter_hp:
+                score += 10
+        
+        # Price match (+8 points for being in range, penalty for being too far)
+        if "price" in filters:
+            car_price = car.get("price", 0)
+            filter_price = filters["price"]
+            if isinstance(filter_price, dict):
+                min_price = filter_price.get("min", 0)
+                max_price = filter_price.get("max", 999999)
+                if min_price <= car_price <= max_price:
+                    score += 8
+                    # Bonus for being near the max (user's budget)
+                    price_range = max_price - min_price
+                    if price_range > 0:
+                        position = (car_price - min_price) / price_range
+                        if 0.7 <= position <= 1.0:  # Near max budget
+                            score += 3
+                else:
+                    # Penalty for being out of range
+                    if car_price > max_price:
+                        overage_pct = (car_price - max_price) / max_price
+                        score -= min(10, overage_pct * 20)
+            elif isinstance(filter_price, (int, float)) and car_price <= filter_price:
+                score += 8
+        
+        # Year/Newness bonus (+1-5 points for newer cars)
+        car_year = car.get("year", 2000)
+        year_bonus = (car_year - 2018) * 0.5  # 0.5 points per year since 2018
+        score += max(0, min(5, year_bonus))
+        
+        # Fuel type match (+6 points)
+        if "fuel_type" in filters:
+            car_fuel = car.get("fuel_type", "")
+            filter_fuel = filters["fuel_type"]
+            if isinstance(filter_fuel, str) and car_fuel == filter_fuel:
+                score += 6
+            elif isinstance(filter_fuel, list) and car_fuel in filter_fuel:
+                score += 6
+        
+        # Transmission match (+4 points)
+        if "transmission" in filters:
+            car_trans = car.get("transmission", "")
+            filter_trans = filters["transmission"]
+            if isinstance(filter_trans, str) and filter_trans.lower() in car_trans.lower():
+                score += 4
+            elif isinstance(filter_trans, list):
+                if any(ft.lower() in car_trans.lower() for ft in filter_trans):
+                    score += 4
+        
+        # Size category match (+8 points)
+        if "size_category" in filters:
+            # This is already filtered by MongoDB, so if it's here, it matches
+            score += 8
+        
+        return score
+    
+    def _apply_tiered_variety(self, scored_results: List[tuple], limit: int) -> List[Dict[str, Any]]:
+        """
+        Apply smart variety by shuffling within score tiers.
+        This provides variety while maintaining relevance.
+        
+        Args:
+            scored_results: List of (car_dict, score) tuples, sorted by score descending
+            limit: Number of results to return
+            
+        Returns:
+            List of car dictionaries
+        """
+        if not scored_results:
+            return []
+        
+        # Define tier boundaries based on score distribution
+        max_score = scored_results[0][1] if scored_results else 0
+        
+        # Tier 1: High relevance (within 10% of max score)
+        # Tier 2: Medium relevance (within 30% of max score)  
+        # Tier 3: Lower relevance (rest)
+        tier1_threshold = max_score * 0.9
+        tier2_threshold = max_score * 0.7
+        
+        tier1 = [(car, score) for car, score in scored_results if score >= tier1_threshold]
+        tier2 = [(car, score) for car, score in scored_results if tier2_threshold <= score < tier1_threshold]
+        tier3 = [(car, score) for car, score in scored_results if score < tier2_threshold]
+        
+        # Shuffle within each tier for variety
+        random.shuffle(tier1)
+        random.shuffle(tier2)
+        random.shuffle(tier3)
+        
+        # Combine tiers and take top results
+        all_tiers = tier1 + tier2 + tier3
+        results = [car for car, score in all_tiers[:limit]]
+        
+        logger.info(f"Tier distribution: T1={len(tier1)}, T2={len(tier2)}, T3={len(tier3)}")
+        
+        return results
+    
+    def _relax_filters(self, filters: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Relaja los filtros para obtener más resultados.
+        Elimina filtros menos críticos y amplía rangos.
+        """
+        relaxed = filters.copy()
     async def get_car_by_id(self, car_id: str) -> Optional[Dict[str, Any]]:
         """
         Obtiene un auto por su ID.
